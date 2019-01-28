@@ -7,86 +7,37 @@
 #include "complex_matrix.h"
 #include "int_matrix.h"
 #include "double_matrix.h"
+#include "mandel_matrix.h"
+#include "custom_complex.h"
 
-/*
-    MANDELBROT
-*/
+/*******************************************************************************
+* MANDELBROT
+*******************************************************************************/
 
-t_complex calc_mandelbrot(t_complex c){
-    int max_iter = 25;
+t_MandelResult calc_mandelbrot(t_complex c, int max_iter){
+    t_MandelResult result;
+    result.in_set = true;
+
     t_complex z = {0, 0};
-
     int iter = 0;
     while(iter < max_iter){
-        z = add(mul(z, z), c);
-
         if(squared_module(z) > 4){
-            return z;
+            result.in_set = false;
+            break;
         }
+
+        z = add(mul(z, z), c);
         iter++;
     }
-    return z;
+
+    result.iterations = iter;
+    result.value = z;
+    return result;
 }
 
-
-void print_mandelbrot(t_cMatrix m){
-    int i, j;
-
-    for(j = 0; j < m.height; j++){
-        for(i = 0; i < m.width; i++){
-            t_complex r;
-            r = c_get(m, i, j);
-
-            if(squared_module(r) > 4.0){
-                printf("*");
-            }
-            else{
-                printf(" ");
-            }
-        }
-        printf("\n");
-    }
-}
-
-void print_mandelbrot_double(t_doubleMatrix m){
-    int i, j;
-
-    for(j = 0; j < m.height; j++){
-        for(i = 0; i < m.width; i++){
-            double r = d_get(m, i, j);
-
-            if( r == 0.0){
-                printf("*");
-            }
-            else{
-                printf("-");
-            }
-        }
-        printf("\n");
-    }
-}
-
-void print_mandelbrot_int(t_intMatrix m){
-    int i, j;
-
-    for(j = 0; j < m.height; j++){
-        for(i = 0; i < m.width; i++){
-            int r = i_get(m, i, j);
-
-            if( r == 0){
-                printf("*");
-            }
-            else{
-                printf(".");
-            }
-        }
-        printf("\n");
-    }
-}
-
-/*
-    LINSPACE
-*/
+/*******************************************************************************
+* LINSPACE
+*******************************************************************************/
 
 typedef struct Linspace{
     double minv;
@@ -107,7 +58,6 @@ double lin_get(t_linspace ls, int n){
 /*******************************************************************************
 * INPUT MATRIX
 *******************************************************************************/
-
 
 void create_input_matrix(t_cMatrix* imat, t_linspace lsx, t_linspace lsy){
     int i, j;
@@ -140,19 +90,6 @@ t_cMatrix generate_input_matrix(int width, int height, double xmin, double xmax,
     return cmat;
 }
 
-
-
-
-
-// normalizzare matrice
-
-// salvare sia matrice che matrice colore?
-// matrice colore, matrice composta da int -> rappresentano colore
-// lunghezza = colormap depth
-// lut, prenderla da python, array di int
-// double index trassformato in colore
-
-
 /*******************************************************************************
 * Colormap
 *******************************************************************************/
@@ -160,7 +97,10 @@ t_cMatrix generate_input_matrix(int width, int height, double xmin, double xmax,
 
 int* load_colormap(char* filename, int color_depth){
     FILE* f = fopen(filename, "rb");
-
+    if (f == NULL) {
+        printf("Error opening colormap file!\n");
+        exit(1);
+    }
     int* rcontent = malloc(color_depth * sizeof(int));
     fread(rcontent, sizeof(int), color_depth, f);
 
@@ -171,19 +111,26 @@ int* load_colormap(char* filename, int color_depth){
 * Generate mandelbrot
 *******************************************************************************/
 
-void populate_mandel_solution(t_cMatrix* mandel_sol, t_cMatrix imat){
+void populate_mandel_solution(t_mandelMatrix* mandel_sol, t_cMatrix imat, int max_iter){
     int i, j;
     for(i = 0; i < imat.width; i++){
         for(j = 0; j < imat.height; j++){
-            t_complex z = calc_mandelbrot(c_get(imat, i, j));
-            c_set(mandel_sol, i, j, z);
+            t_MandelResult m = calc_mandelbrot(c_get(imat, i, j), max_iter);
+            m_set(mandel_sol, i, j, m);
         }
     }
 }
 
+typedef enum Modes{
+    m_iteration = 0,
+    m_module,
+    m_real,
+    m_imag,
+    m_phase,
+}t_modes;
 
 // converts the mandelbrot in a real number
-t_doubleMatrix evaluate_mandelbrot(t_cMatrix mandel_sol){
+t_doubleMatrix evaluate_mandelbrot(t_mandelMatrix mandel_sol, t_modes mode){
     int i, j;
 
     t_doubleMatrix real_sol;
@@ -192,19 +139,30 @@ t_doubleMatrix evaluate_mandelbrot(t_cMatrix mandel_sol){
 
     for(i = 0; i < mandel_sol.width; i++){
         for(j = 0; j < mandel_sol.height; j++){
-            t_complex z = c_get(mandel_sol, i, j);
-            // insert here the different possible calculations
-            double sqm = squared_module(z);
-            double item;
 
-            // inside mandelbrot
-            if(sqm <= 4){
-                item = 0;
+            t_MandelResult result = m_get(mandel_sol, i, j);
+            double ev_res;
+            switch(mode){
+                case m_iteration:
+                    ev_res = (double) result.iterations;
+                    break;
+                case m_module:
+                    ev_res = module(result.value);
+                    break;
+                case m_real:
+                    ev_res = result.value.real;
+                    break;
+                case m_imag:
+                    ev_res = result.value.imag;
+                    break;
+                case m_phase:
+                    ev_res = phase(result.value);
+                    break;
+                default:
+                    ev_res = 0;
             }
-            else{
-                item = sqrt(sqm);
-            }
-            d_set(ptr_real_sol, i, j, item);
+
+            d_set(ptr_real_sol, i, j, ev_res);
         }
     }
 
@@ -214,7 +172,7 @@ t_doubleMatrix evaluate_mandelbrot(t_cMatrix mandel_sol){
     return real_sol;
 }
 
-t_intMatrix convert_to_colormap(t_doubleMatrix real_sol, char* cmp_filename, int color_depth){
+t_intMatrix convert_to_colormap(t_doubleMatrix real_sol, t_mandelMatrix mandel, char* cmp_filename, int color_depth){
     int i, j;
     t_intMatrix color_mat;
     t_intMatrix* ptr_color_mat = &color_mat;
@@ -224,23 +182,18 @@ t_intMatrix convert_to_colormap(t_doubleMatrix real_sol, char* cmp_filename, int
 
     for(i = 0; i < real_sol.width; i++){
         for(j = 0; j < real_sol.height; j++){
-            // take the value
-            double v = d_get(real_sol, i, j);
-            // check if is 0 to 1
-            assert(v >= 0 && v <= 1);
-
-            int color;
-            // get the number from the colormap and assing it to the matrix
-            if(v == 0){
-                color = 0;
+            t_MandelResult m = m_get(mandel, i, j);
+            if(m.in_set){
+                i_set(ptr_color_mat, i, j, 0);
             }
             else{
+                int color;
+                double v = d_get(real_sol, i, j);
                 double dcolor_index = v * (color_depth - 1);
                 int color_index = (int) dcolor_index;
                 color = colormap[color_index];
+                i_set(ptr_color_mat, i, j, color);
             }
-
-            i_set(ptr_color_mat, i, j, color);
         }
     }
     return color_mat;
@@ -250,7 +203,7 @@ t_intMatrix convert_to_colormap(t_doubleMatrix real_sol, char* cmp_filename, int
 void create_mandel_file(char* path, t_intMatrix color_mat){
     FILE* f = fopen(path, "wb");
     if (f == NULL) {
-        printf("Error opening file!\n");
+        printf("Error opening file to be saved!\n");
         exit(1);
     }
     printf("writing to file...\n");
@@ -260,7 +213,9 @@ void create_mandel_file(char* path, t_intMatrix color_mat){
 void generate_mandelbrot(int width, int height,
                          double xmin, double xmax,
                          double ymin, double ymax,
-                         int color_depth, char* colormap_filename){
+                         int max_iter, t_modes mode,
+                         int color_depth, char* colormap_filename,
+                         char* destination){
 
     printf("calculating...\n");
     // generate the input matrix
@@ -268,61 +223,76 @@ void generate_mandelbrot(int width, int height,
     t_cMatrix imat = generate_input_matrix(width, height, xmin, xmax, ymin, ymax);
 
     // create the solution
-    t_cMatrix mand_sol;
-    t_cMatrix* mandel_sol = &mand_sol;
-    c_init_matrix(mandel_sol, width, height);
+    t_mandelMatrix mand_sol;
+    t_mandelMatrix* mandel_sol = &mand_sol;
+    m_init_matrix(mandel_sol, width, height);
 
-    populate_mandel_solution(mandel_sol, imat);
+    populate_mandel_solution(mandel_sol, imat, max_iter);
 
     //print_mandelbrot(mand_sol);
 
     // construct a double matrix
-    t_doubleMatrix real_sol = evaluate_mandelbrot(mand_sol);
+    t_doubleMatrix real_sol = evaluate_mandelbrot(mand_sol, mode);
 
     //print_mandelbrot_double(real_sol);
 
     // contruct a int matrix based on the value
-    t_intMatrix color_mat = convert_to_colormap(real_sol, colormap_filename, color_depth);
+    t_intMatrix color_mat = convert_to_colormap(real_sol, mand_sol, colormap_filename, color_depth);
 
     //print_mandelbrot_int(color_mat);
 
     //write to file
-    create_mandel_file("test_file.mlo", color_mat);
+    create_mandel_file(destination, color_mat);
 
     // free stuff
     c_free_matrix(&imat);
-    c_free_matrix(mandel_sol);
+    m_free_matrix(&mand_sol);
     d_free_matrix(&real_sol);
     i_free_matrix(&color_mat);
 
 }
 
-// write the different modes
-// iteration, phase, module, real, imag
-
 // write the inputs from command line int* argc, char** argv
 
 
-int main()
+
+
+int main(int argc, char* argv[])
 {
-    int width = 640;
-    int height = 480;
+    assert(argc == 12);
 
-    int color_depth = 128;
-    char* cmap_filename = "hot_lut.cmp";
+    int width = atoi(argv[1]);
+    int height = atoi(argv[2]);
 
-    double xmin = -2., xmax = 1.5, ymin = -1.25, ymax = 1.25;
-    generate_mandelbrot(width, height, xmin, xmax, ymin, ymax, color_depth, cmap_filename);
+    double xmin = atof(argv[3]);
+    double xmax = atof(argv[4]);
+    double ymin = atof(argv[5]);
+    double ymax = atof(argv[6]);
 
-    char* vb_str = "vb e' frocio";
-    printf("%d, %c, %x\n", vb_str[0], vb_str[0], vb_str[0]);
-    int a, b, c;
-    a = build_int(vb_str);
-    b = build_int(vb_str + 4);
-    c = build_int(vb_str + 8);
-    printf("%d\n", c);
+    int max_iter = atoi(argv[7]);
+
+    char* arg_mode = argv[8];
+    char* modes_str[] = {"iteration", "module", "real", "imag", "phase"};
+    size_t modes_size = 5;
+    t_modes mode;
+
+    int i;
+    for(i = 0; i < modes_size; i++){
+        if(strcmp(arg_mode, modes_str[i]) == 0){
+            mode = (t_modes)i;
+            break;
+        }
+    }
+
+    int color_depth = atoi(argv[9]);
+    char* cmap_filename = argv[10];
+    char* destination = argv[11];
+
+    generate_mandelbrot(width, height, xmin, xmax, ymin, ymax, max_iter, mode, color_depth, cmap_filename, destination);
 
 
 
     return 0;
 }
+
+

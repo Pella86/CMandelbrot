@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1548248660 source:c:\users\mauro\desktop\vita online\programming\pycmandelbrot\main.c
+1548586842 source:c:\users\mauro\desktop\vita online\programming\pycmandelbrot\main.c
 	<stdio.h>
 	<stdlib.h>
 	<string.h>
@@ -8,17 +8,20 @@
 	"complex_matrix.h"
 	"int_matrix.h"
 	"double_matrix.h"
+	"mandel_matrix.h"
+	"custom_complex.h"
 
 1547991216 c:\users\mauro\desktop\vita online\programming\pycmandelbrot\complex_matrix.h
 	"custom_complex.h"
 
-1547991201 c:\users\mauro\desktop\vita online\programming\pycmandelbrot\custom_complex.h
+1548580570 c:\users\mauro\desktop\vita online\programming\pycmandelbrot\custom_complex.h
 
 1547991216 source:c:\users\mauro\desktop\vita online\programming\pycmandelbrot\complex_matrix.h
 	"custom_complex.h"
 
-1547992337 source:c:\users\mauro\desktop\vita online\programming\pycmandelbrot\custom_complex.c
+1548580842 source:c:\users\mauro\desktop\vita online\programming\pycmandelbrot\custom_complex.c
 	"custom_complex.h"
+	<math.h>
 	<stdio.h>
 
 1547991201 source:c:\users\mauro\desktop\vita online\programming\pycmandelbrot\custom_complex.h
@@ -42,4 +45,13 @@
 	"math.h"
 
 1548110895 c:\users\mauro\desktop\vita online\programming\pycmandelbrot\double_matrix.h
+
+1548580768 c:\users\mauro\desktop\vita online\programming\pycmandelbrot\mandel_matrix.h
+	"custom_complex.h"
+
+1548580816 source:c:\users\mauro\desktop\vita online\programming\pycmandelbrot\mandel_matrix.c
+	"mandel_matrix.h"
+	<stdio.h>
+	<stdlib.h>
+	"custom_complex.h"
 

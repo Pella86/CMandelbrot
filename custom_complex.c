@@ -1,6 +1,8 @@
 #include "custom_complex.h"
 
+#include <math.h>
 #include <stdio.h>
+
 
 
 void print_complex(t_complex c){
@@ -24,6 +26,14 @@ t_complex mul(t_complex a, t_complex b){
 
 double squared_module(t_complex a){
     return a.real * a.real + a.imag * a.imag;
+}
+
+double module(t_complex a){
+    return sqrt(squared_module(a));
+}
+
+double phase(t_complex a){
+    return atan2(a.imag, a.real);
 }
 
 

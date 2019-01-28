@@ -9,5 +9,7 @@ void print_complex(t_complex c);
 t_complex add(t_complex a, t_complex b);
 t_complex mul(t_complex a, t_complex b);
 double squared_module(t_complex a);
+double module(t_complex a);
+double phase(t_complex a);
 
 #endif // CUSTOM_COMPLEX_H_INCLUDED
